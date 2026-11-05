@@ -156,8 +156,8 @@ async function run() {
       res.send(result);
     });
 
-    // 8. DELETE /borrows/:id 
-    app.delete('/borrows/:id', async (req, res) => {
+     // 8. DELETE /borrows/:id - 
+    app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -179,7 +179,7 @@ async function run() {
       }
     });
 
-   
+    
     app.get('/', (req, res) => {
       res.send({ message: `BookNook Server is running!` });
     });
