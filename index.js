@@ -111,12 +111,12 @@ async function run() {
 
     //BORROWS API 
 
-    // 6. POST /borrows - 
-    app.post('/borrows', async (req, res) => {
+    
+    // 6. POST /borrows 
+    app.post('/borrows', verifyJWT, async (req, res) => {
       try {
         const borrowData = req.body;
         
-        // No Double Borrow
         const existingBorrow = await db.collection('borrows').findOne({
           bookId: borrowData.bookId,
           userEmail: borrowData.userEmail
@@ -126,14 +126,8 @@ async function run() {
           return res.status(400).send({ message: "You have already borrowed this book!" });
         }
 
-       
         const book = await db.collection('books').findOne({ _id: new ObjectId(borrowData.bookId) });
-        
-        if (!book) {
-          return res.status(404).send({ message: "Book not found!" });
-        }
-
-        if (Number(book.totalCopies) <= 0) {
+        if (!book || Number(book.totalCopies) <= 0) {
           return res.status(400).send({ message: "This book is currently not available!" });
         }
 
@@ -142,7 +136,6 @@ async function run() {
           borrowDate: new Date(),
         };
         
-      
         await db.collection('books').updateOne(
           { _id: new ObjectId(borrowData.bookId) },
           { $inc: { totalCopies: -1 } }
@@ -152,12 +145,10 @@ async function run() {
         res.send(result);
 
       } catch (error) {
-        console.error("Borrow Error:", error);
         res.status(500).send({ message: "Internal Server Error", error: error.message });
       }
     });
-
-    // 7. GET /borrows 
+ // 7. GET /borrows 
     app.get('/borrows', async (req, res) => {
       const email = req.query.email;
       const query = { userEmail: email };
