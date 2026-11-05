@@ -148,14 +148,20 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error", error: error.message });
       }
     });
- // 7. GET /borrows 
-    app.get('/borrows', async (req, res) => {
+ 
+// 7. GET /borrows 
+    app.get('/borrows', verifyJWT, async (req, res) => {
       const email = req.query.email;
+      
+      
+      if (req.decoded.email !== email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+
       const query = { userEmail: email };
       const result = await db.collection('borrows').find(query).toArray();
       res.send(result);
     });
-
      // 8. DELETE /borrows/:id - 
     app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
