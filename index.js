@@ -96,8 +96,8 @@ async function run() {
       }
     });
 
-    // 5. DELETE /books/:id 
-    app.delete('/books/:id', async (req, res) => {
+  // 5. DELETE /books/:id 
+    app.delete('/books/:id', verifyJWT, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -107,6 +107,7 @@ async function run() {
         res.status(400).send({ message: "Failed to delete book" });
       }
     });
+
 
     //BORROWS API 
 
