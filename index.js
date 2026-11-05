@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import cors from 'cors';
-import jwt from 'jsonwebtoken';
+import { createRemoteJWKSet, jwtVerify } from 'jose'; 
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -21,21 +21,31 @@ const client = new MongoClient(process.env.MONGODB_URL, {
 
 let db;
 
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.BETTER_AUTH_URL}/api/auth/jwks`)
+);
+
 // JWT Verify Middleware
-const verifyJWT = (req, res, next) => {
+const verifyJWT = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).send({ message: 'Unauthorized access' });
   }
   const token = authHeader.split(' ')[1];
   
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).send({ message: 'Forbidden access' });
-    }
-    req.decoded = decoded;
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: process.env.BETTER_AUTH_URL,
+      audience: process.env.BETTER_AUTH_URL,
+    });
+    console.log("✅ Decoded User Data:", payload); 
+    req.decoded = payload;
     next();
-  });
+  } catch (err) {
+    console.log("❌ JWT Verify Error:", err.message);
+    return res.status(403).send({ message: 'Forbidden access' });
+  }
 };
 
 async function run() {
@@ -44,15 +54,15 @@ async function run() {
     db = client.db("booknookDB");
     console.log("✅ You successfully connected to MongoDB!");
 
-    //BOOKS API
+    
 
-    // 1. GET /books 
+    // 1. GET /books
     app.get('/books', async (req, res) => {
       const result = await db.collection('books').find().sort({ addedDate: -1 }).toArray();
       res.send(result);
     });
 
-    // 2. GET /books/:id 
+    // 2. GET /books/:id
     app.get('/books/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -64,9 +74,9 @@ async function run() {
       }
     });
 
-    // 3. POST /books - 
-    app.post('/books', async (req, res) => {
-      const book = req.body;
+    // 3. POST /books
+    app.post('/books', verifyJWT, async (req, res) => {
+      console.log("🔥 POST /books hit hoise!"); 
       const newBook = {
         ...book,
         totalCopies: Number(book.totalCopies),
@@ -76,9 +86,10 @@ async function run() {
       res.send(result);
     });
 
-     // 4. PATCH /books/:id - 
+    // 4. PATCH /books/:id
     app.patch('/books/:id', verifyJWT, async (req, res) => {
       try {
+        console.log("🔥 PATCH /books hit hoise!"); 
         const id = req.params.id;
         const updatedBook = req.body;
         delete updatedBook._id; 
@@ -96,10 +107,10 @@ async function run() {
       }
     });
 
-  // 5. DELETE /books/:id 
+    // 5. DELETE /books/:id
     app.delete('/books/:id', verifyJWT, async (req, res) => {
       try {
-        const id = req.params.id;
+        console.log("🔥 DELETE /books hit hoise!"); 
         const query = { _id: new ObjectId(id) };
         const result = await db.collection('books').deleteOne(query);
         res.send(result);
@@ -108,12 +119,10 @@ async function run() {
       }
     });
 
-
-    //BORROWS API 
-
     
-    // 6. POST /borrows 
+    // 6. POST /borrows
     app.post('/borrows', verifyJWT, async (req, res) => {
+      console.log("🔥 POST /borrows hit hoise!"); 
       try {
         const borrowData = req.body;
         
@@ -145,27 +154,34 @@ async function run() {
         res.send(result);
 
       } catch (error) {
+        console.error("Borrow Error:", error);
         res.status(500).send({ message: "Internal Server Error", error: error.message });
       }
     });
- 
-// 7. GET /borrows 
-    app.get('/borrows', verifyJWT, async (req, res) => {
-      const email = req.query.email;
-      
-      
-      if (req.decoded.email !== email) {
-        return res.status(403).send({ message: 'Forbidden access' });
-      }
 
-      const query = { userEmail: email };
-      const result = await db.collection('borrows').find(query).toArray();
-      res.send(result);
+    // 7. GET /borrows
+    app.get('/borrows', verifyJWT, async (req, res) => {
+      console.log("🔥 GET /borrows hit hoise!"); 
+      try {
+        const email = req.query.email;
+        const tokenEmail = req.decoded?.email || req.decoded?.user?.email;
+
+        if (tokenEmail !== email) {
+          return res.status(403).send({ message: 'Forbidden access' });
+        }
+
+        const query = { userEmail: email };
+        const result = await db.collection('borrows').find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server Error", error: error.message });
+      }
     });
-     // 8. DELETE /borrows/:id - 
+
+    // 8. DELETE /borrows/:id
     app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
-        const id = req.params.id;
+        console.log("🔥 DELETE /borrows hit hoise!"); 
         const query = { _id: new ObjectId(id) };
         
         const borrowRecord = await db.collection('borrows').findOne(query);
