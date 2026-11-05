@@ -76,12 +76,11 @@ async function run() {
       res.send(result);
     });
 
-    // 4. PATCH /books/:id 
-    app.patch('/books/:id', async (req, res) => {
+     // 4. PATCH /books/:id - 
+    app.patch('/books/:id', verifyJWT, async (req, res) => {
       try {
         const id = req.params.id;
         const updatedBook = req.body;
-        // _id 
         delete updatedBook._id; 
         
         if (updatedBook.totalCopies) {
