@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import cors from 'cors';
-import { createRemoteJWKSet, jwtVerify } from 'jose'; 
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -21,12 +21,12 @@ const client = new MongoClient(process.env.MONGODB_URL, {
 
 let db;
 
-
 const JWKS = createRemoteJWKSet(
+
   new URL(`${process.env.BETTER_AUTH_URL}/api/auth/jwks`)
 );
 
-// JWT Verify Middleware
+// JWT Verify Middleware 
 const verifyJWT = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -54,8 +54,7 @@ async function run() {
     db = client.db("booknookDB");
     console.log("✅ You successfully connected to MongoDB!");
 
-    
-
+    //  BOOKS API 
     // 1. GET /books
     app.get('/books', async (req, res) => {
       const result = await db.collection('books').find().sort({ addedDate: -1 }).toArray();
@@ -76,7 +75,8 @@ async function run() {
 
     // 3. POST /books
     app.post('/books', verifyJWT, async (req, res) => {
-      console.log("🔥 POST /books hit hoise!"); 
+      console.log("🔥 POST /books hit hoise!");
+      const book = req.body;
       const newBook = {
         ...book,
         totalCopies: Number(book.totalCopies),
@@ -89,7 +89,7 @@ async function run() {
     // 4. PATCH /books/:id
     app.patch('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 PATCH /books hit hoise!"); 
+        console.log("🔥 PATCH /books hit hoise!");
         const id = req.params.id;
         const updatedBook = req.body;
         delete updatedBook._id; 
@@ -110,7 +110,8 @@ async function run() {
     // 5. DELETE /books/:id
     app.delete('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 DELETE /books hit hoise!"); 
+        console.log("🔥 DELETE /books hit hoise!");
+        const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         const result = await db.collection('books').deleteOne(query);
         res.send(result);
@@ -119,10 +120,10 @@ async function run() {
       }
     });
 
-    
+    // BORROWS API
     // 6. POST /borrows
     app.post('/borrows', verifyJWT, async (req, res) => {
-      console.log("🔥 POST /borrows hit hoise!"); 
+      console.log("🔥 POST /borrows hit hoise!");
       try {
         const borrowData = req.body;
         
@@ -142,6 +143,7 @@ async function run() {
 
         const newBorrow = {
           ...borrowData,
+          bookId: new ObjectId(borrowData.bookId), 
           borrowDate: new Date(),
         };
         
@@ -159,9 +161,9 @@ async function run() {
       }
     });
 
-    // 7. GET /borrows
+  
     app.get('/borrows', verifyJWT, async (req, res) => {
-      console.log("🔥 GET /borrows hit hoise!"); 
+      console.log("🔥 GET /borrows hit hoise!");
       try {
         const email = req.query.email;
         const tokenEmail = req.decoded?.email || req.decoded?.user?.email;
@@ -178,17 +180,23 @@ async function run() {
       }
     });
 
-    // 8. DELETE /borrows/:id
+   
     app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 DELETE /borrows hit hoise!"); 
+        console.log("🔥 DELETE /borrows hit hoise!");
+        const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         
         const borrowRecord = await db.collection('borrows').findOne(query);
         
         if (borrowRecord) {
+         
+          const bookIdToUpdate = typeof borrowRecord.bookId === 'string' 
+            ? new ObjectId(borrowRecord.bookId) 
+            : borrowRecord.bookId;
+
           await db.collection('books').updateOne(
-            { _id: new ObjectId(borrowRecord.bookId) },
+            { _id: bookIdToUpdate },
             { $inc: { totalCopies: 1 } }
           );
           const result = await db.collection('borrows').deleteOne(query);
@@ -197,11 +205,12 @@ async function run() {
           res.status(404).send({ message: 'Borrow record not found' });
         }
       } catch (error) {
+        console.error("Delete borrow error:", error);
         res.status(400).send({ message: "Invalid Borrow ID" });
       }
     });
 
-    
+  
     app.get('/', (req, res) => {
       res.send({ message: `BookNook Server is running!` });
     });
