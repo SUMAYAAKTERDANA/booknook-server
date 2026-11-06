@@ -39,11 +39,11 @@ const verifyJWT = async (req, res, next) => {
       issuer: process.env.BETTER_AUTH_URL,
       audience: process.env.BETTER_AUTH_URL,
     });
-    console.log("✅ Decoded User Data:", payload); 
+    console.log(" Decoded User Data:", payload); 
     req.decoded = payload;
     next();
   } catch (err) {
-    console.log("❌ JWT Verify Error:", err.message);
+    console.log(" JWT Verify Error:", err.message);
     return res.status(403).send({ message: 'Forbidden access' });
   }
 };
@@ -52,7 +52,7 @@ async function run() {
   try {
     await client.connect();
     db = client.db("booknookDB");
-    console.log("✅ You successfully connected to MongoDB!");
+    console.log("You successfully connected to MongoDB!");
 
     //  BOOKS API 
     // 1. GET /books
@@ -75,7 +75,7 @@ async function run() {
 
     // 3. POST /books
     app.post('/books', verifyJWT, async (req, res) => {
-      console.log("🔥 POST /books hit hoise!");
+      console.log("POST /books hit hoise!");
       const book = req.body;
       const newBook = {
         ...book,
@@ -89,7 +89,7 @@ async function run() {
     // 4. PATCH /books/:id
     app.patch('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 PATCH /books hit hoise!");
+        console.log(" PATCH /books hit hoise!");
         const id = req.params.id;
         const updatedBook = req.body;
         delete updatedBook._id; 
@@ -110,7 +110,7 @@ async function run() {
     // 5. DELETE /books/:id
     app.delete('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 DELETE /books hit hoise!");
+        console.log(" DELETE /books hit hoise!");
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         const result = await db.collection('books').deleteOne(query);
@@ -123,7 +123,7 @@ async function run() {
     // BORROWS API
     // 6. POST /borrows
     app.post('/borrows', verifyJWT, async (req, res) => {
-      console.log("🔥 POST /borrows hit hoise!");
+      console.log(" POST /borrows hit hoise!");
       try {
         const borrowData = req.body;
         
@@ -163,7 +163,7 @@ async function run() {
 
   
     app.get('/borrows', verifyJWT, async (req, res) => {
-      console.log("🔥 GET /borrows hit hoise!");
+      console.log(" GET /borrows hit hoise!");
       try {
         const email = req.query.email;
         const tokenEmail = req.decoded?.email || req.decoded?.user?.email;
@@ -183,7 +183,7 @@ async function run() {
    
     app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
-        console.log("🔥 DELETE /borrows hit hoise!");
+        console.log(" DELETE /borrows hit hoise!");
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         
@@ -216,11 +216,11 @@ async function run() {
     });
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running at ${PORT}`);
+      console.log(` Server is running at ${PORT}`);
     });
 
   } catch (err) {
-    console.error("❌ MongoDB connection failed:", err);
+    console.error(" MongoDB connection failed:", err);
   }
 }
 
