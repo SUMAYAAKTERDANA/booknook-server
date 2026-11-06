@@ -21,8 +21,8 @@ const client = new MongoClient(process.env.MONGODB_URL, {
 
 let db;
 
+// BetterAuth JWKS
 const JWKS = createRemoteJWKSet(
-
   new URL(`${process.env.BETTER_AUTH_URL}/api/auth/jwks`)
 );
 
@@ -39,11 +39,10 @@ const verifyJWT = async (req, res, next) => {
       issuer: process.env.BETTER_AUTH_URL,
       audience: process.env.BETTER_AUTH_URL,
     });
-    console.log(" Decoded User Data:", payload); 
     req.decoded = payload;
     next();
   } catch (err) {
-    console.log(" JWT Verify Error:", err.message);
+    console.log("JWT Verify Error:", err.message);
     return res.status(403).send({ message: 'Forbidden access' });
   }
 };
@@ -52,9 +51,10 @@ async function run() {
   try {
     await client.connect();
     db = client.db("booknookDB");
-    console.log("You successfully connected to MongoDB!");
+    console.log("Successfully connected to MongoDB!");
 
-    //  BOOKS API 
+    // BOOKS API
+
     // 1. GET /books
     app.get('/books', async (req, res) => {
       const result = await db.collection('books').find().sort({ addedDate: -1 }).toArray();
@@ -75,7 +75,6 @@ async function run() {
 
     // 3. POST /books
     app.post('/books', verifyJWT, async (req, res) => {
-      console.log("POST /books hit hoise!");
       const book = req.body;
       const newBook = {
         ...book,
@@ -89,7 +88,6 @@ async function run() {
     // 4. PATCH /books/:id
     app.patch('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log(" PATCH /books hit hoise!");
         const id = req.params.id;
         const updatedBook = req.body;
         delete updatedBook._id; 
@@ -110,7 +108,6 @@ async function run() {
     // 5. DELETE /books/:id
     app.delete('/books/:id', verifyJWT, async (req, res) => {
       try {
-        console.log(" DELETE /books hit hoise!");
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         const result = await db.collection('books').deleteOne(query);
@@ -120,10 +117,10 @@ async function run() {
       }
     });
 
-    // BORROWS API
+    // BORROWS API 
+
     // 6. POST /borrows
     app.post('/borrows', verifyJWT, async (req, res) => {
-      console.log(" POST /borrows hit hoise!");
       try {
         const borrowData = req.body;
         
@@ -156,14 +153,12 @@ async function run() {
         res.send(result);
 
       } catch (error) {
-        console.error("Borrow Error:", error);
         res.status(500).send({ message: "Internal Server Error", error: error.message });
       }
     });
 
-  
+    // 7. GET /borrows
     app.get('/borrows', verifyJWT, async (req, res) => {
-      console.log(" GET /borrows hit hoise!");
       try {
         const email = req.query.email;
         const tokenEmail = req.decoded?.email || req.decoded?.user?.email;
@@ -180,17 +175,15 @@ async function run() {
       }
     });
 
-   
+    // 8. DELETE /borrows/:id
     app.delete('/borrows/:id', verifyJWT, async (req, res) => {
       try {
-        console.log(" DELETE /borrows hit hoise!");
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         
         const borrowRecord = await db.collection('borrows').findOne(query);
         
         if (borrowRecord) {
-         
           const bookIdToUpdate = typeof borrowRecord.bookId === 'string' 
             ? new ObjectId(borrowRecord.bookId) 
             : borrowRecord.bookId;
@@ -205,22 +198,22 @@ async function run() {
           res.status(404).send({ message: 'Borrow record not found' });
         }
       } catch (error) {
-        console.error("Delete borrow error:", error);
         res.status(400).send({ message: "Invalid Borrow ID" });
       }
     });
 
-  
+    // Root Route
     app.get('/', (req, res) => {
       res.send({ message: `BookNook Server is running!` });
     });
 
+    // Start Server
     app.listen(PORT, () => {
-      console.log(` Server is running at ${PORT}`);
+      console.log(`Server is running at ${PORT}`);
     });
 
   } catch (err) {
-    console.error(" MongoDB connection failed:", err);
+    console.error("MongoDB connection failed:", err);
   }
 }
 
